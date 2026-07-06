@@ -353,12 +353,3 @@ npm run build
 # Run production
 NODE_ENV=production node dist/main.js
 ```
-
-## License
-
-Internal project - All rights reserved Vybe Cabs Inc.
-
----
-
-**Last Updated:** July 6, 2026  
-**Version:** 1.0.0 (Production Ready)
