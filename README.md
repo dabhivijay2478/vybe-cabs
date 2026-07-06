@@ -4,6 +4,8 @@ A high-performance, concurrent-safe ride allocation system that guarantees exact
 
 ## Architecture Overview
 
+
+
 ```mermaid
 graph TB
     Client["Client (Mobile/Web)"]
@@ -19,6 +21,40 @@ graph TB
     API -->|Queues| BullMQ
     BullMQ -->|Monitors| Redis
     API -->|Push Notifications| WS
+```
+
+##  High-level architecture
+
+```mermaid
+sequenceDiagram
+    participant Rider
+    participant API as NestJS API
+    participant PG as PostgreSQL
+    participant Redis
+    participant Queue as BullMQ
+    participant D1 as Driver A
+    participant D2 as Driver B
+
+    Rider->>API: POST /rides {pickup}
+    API->>PG: insert ride (REQUESTED)
+    API->>Redis: GEOSEARCH drivers:locations
+    API->>PG: update ride (SEARCHING), batch#1
+    API->>Redis: SADD ride:{id}:notified:1 [driverIds]
+    API->>Queue: schedule timeout job (delay=10s)
+    API-->>D1: ws emit ride:offer
+    API-->>D2: ws emit ride:offer
+
+    par concurrent accepts
+        D1->>API: POST /rides/:id/accept {driverId: A}
+        D2->>API: POST /rides/:id/accept {driverId: B}
+    end
+
+    API->>Redis: EVAL accept.lua (atomic)
+    Redis-->>API: winner = A
+    API->>PG: update ride (ASSIGNED, driver=A)
+    API->>Queue: cancel timeout job
+    API-->>D1: ws emit ride:assigned (you got it)
+    API-->>D2: ws emit ride:closed (too late)
 ```
 
 ## Technology Stack
