@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DriverStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+enum RideStatus {
+  REQUESTED
+  SEARCHING
+  ASSIGNED
+  TIMEOUT
+  CANCELLED
+}
+
+enum OfferResponse {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Driver {
+  id          String       @id @default(uuid())
+  name        String
+  phone       String
+  vehicleType String
+  status      DriverStatus @default(OFFLINE)
+  lastLat     Float?
+  lastLng     Float?
+  updatedAt   DateTime     @updatedAt
+  offers      RideOffer[]
+  rides       Ride[]       @relation("AssignedDriver")
+  createdAt   DateTime     @default(now())
+}
+
+model Ride {
+  id               String     @id @default(uuid())
+  riderId          String
+  pickupLat        Float
+  pickupLng        Float
+  dropoffLat       Float
+  dropoffLng       Float
+  status           RideStatus @default(REQUESTED)
+  currentBatch     Int        @default(0)
+  assignedDriverId String?
+  assignedDriver   Driver?    @relation("AssignedDriver", fields: [assignedDriverId], references: [id])
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  assignedAt       DateTime?
+  offers           RideOffer[]
+}
+
+model RideOffer {
+  id          String         @id @default(uuid())
+  rideId      String
+  ride        Ride           @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  driverId    String
+  driver      Driver         @relation(fields: [driverId], references: [id])
+  batchNumber Int
+  notifiedAt  DateTime       @default(now())
+  respondedAt DateTime?
+  response    OfferResponse  @default(PENDING)
+
+  @@unique([rideId, driverId, batchNumber])
+}
